@@ -88,6 +88,12 @@ git push -u origin main
    mybuild cancel <build-id>
    ```
 
+* **চলমান বিল্ডের লাইভ লগ পুনরায় দেখতে (Watch Logs Live):**
+   যদি কখনো কানেকশন ডিসকানেক্ট হয়ে যায় এবং আবার রানিং বিল্ডের লাইভ লগ দেখতে চান, তবে রান করুন:
+   ```bash
+   mybuild logs <build-id> -w
+   ```
+
 ---
 
 ## 🛠 সার্ভার মেইনটেন্যান্স (PM2 Commands)

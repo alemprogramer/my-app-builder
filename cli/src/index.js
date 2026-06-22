@@ -59,7 +59,7 @@ function getClient() {
   return axios.create({
     baseURL: config.apiUrl,
     headers: { 'x-api-key': config.apiKey },
-    timeout: 30000
+    timeout: 120000 // 120 seconds timeout to survive heavy CPU bundling loads
   });
 }
 
@@ -351,14 +351,75 @@ program
 program
   .command('logs')
   .argument('<id>', 'Build ID to fetch logs for')
+  .option('-w, --watch', 'Stream build logs live in real-time')
   .description('Fetch and display build logs from the server')
-  .action(async (id) => {
+  .action(async (id, options) => {
     const client = getClient();
-    try {
-      const res = await client.get(`/build/${id}/logs`);
-      console.log(res.data);
-    } catch (err) {
-      console.error('✖ Failed to fetch logs:', err.message);
+    
+    if (!options.watch) {
+      try {
+        const res = await client.get(`/build/${id}/logs`);
+        console.log(res.data);
+      } catch (err) {
+        console.error('✖ Failed to fetch logs:', err.message);
+      }
+      return;
+    }
+
+    console.log(`Streaming live build logs for ${id} (Ctrl+C to stop)...\n`);
+    let printedLines = 0;
+    let isFinished = false;
+
+    while (!isFinished) {
+      // Fetch logs
+      let logs = '';
+      try {
+        const logRes = await client.get(`/build/${id}/logs`);
+        logs = logRes.data;
+      } catch (err) {
+        // Ignore failures to retrieve logs during transient states
+      }
+
+      // Print new logs
+      const logLines = logs.split('\n');
+      if (logLines.length > printedLines) {
+        const newLines = logLines.slice(printedLines, logLines.length - 1);
+        newLines.forEach(line => console.log(line));
+        printedLines = logLines.length - 1;
+      }
+
+      // Check status to stop loop when done
+      try {
+        const statusRes = await client.get(`/build/${id}`);
+        const buildInfo = statusRes.data;
+
+        if (buildInfo.status === 'completed') {
+          isFinished = true;
+          console.log(`\n========================================`);
+          console.log(`✔ BUILD SUCCESSFUL`);
+          console.log(`========================================`);
+          console.log(`Download APK: ${buildInfo.downloadUrl}`);
+          console.log(`========================================\n`);
+        } else if (buildInfo.status === 'failed') {
+          isFinished = true;
+          console.log(`\n========================================`);
+          console.log(`✖ BUILD FAILED`);
+          console.log(`========================================`);
+          console.log(`Reason: ${buildInfo.error || 'Unknown error'}`);
+          console.log(`========================================\n`);
+        } else if (buildInfo.status === 'cancelled') {
+          isFinished = true;
+          console.log(`\n========================================`);
+          console.log(`⚠ BUILD CANCELLED BY USER`);
+          console.log(`========================================\n`);
+        }
+      } catch (err) {
+        // Ignore status failures
+      }
+
+      if (!isFinished) {
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
     }
   });
 
