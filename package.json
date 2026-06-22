@@ -1,0 +1,15 @@
+{
+  "name": "myexpobulder-root",
+  "version": "1.0.0",
+  "description": "Root workspace for mybuild - self-hosted Expo mobile app build system",
+  "private": true,
+  "scripts": {
+    "api-install": "cd api && npm install",
+    "worker-install": "cd worker && npm install",
+    "cli-install": "cd cli && npm install",
+    "install-all": "npm run api-install && npm run worker-install && npm run cli-install",
+    "start-api": "cd api && npm start",
+    "start-worker": "cd worker && npm start",
+    "start-cli": "cd cli && npm start"
+  }
+}

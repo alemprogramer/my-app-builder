@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables & secrets
+.env
+api/.env
+worker/.env
+
+# Local database storage & build files
+api/data/
+worker/tmp/
+tmp/
+builds/
+*.zip
+
+# PM2 logs & system files
+logs/
+*.log
+.DS_Store
+Thumbs.db

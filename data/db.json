@@ -1,0 +1,37 @@
+{
+  "builds": [
+    {
+      "id": "build-1782108646644-gz2l6o",
+      "projectName": "TestApp",
+      "platform": "android",
+      "status": "failed",
+      "createdAt": "2026-06-22T06:10:46.644Z",
+      "updatedAt": "2026-06-22T06:11:29.872Z",
+      "logsPath": "data/builds/build-1782108646644-gz2l6o/logs.txt",
+      "downloadUrl": null,
+      "error": "Command failed with exit code 1"
+    },
+    {
+      "id": "build-1782108296838-erxskr",
+      "projectName": "TestApp",
+      "platform": "android",
+      "status": "failed",
+      "createdAt": "2026-06-22T06:04:56.838Z",
+      "updatedAt": "2026-06-22T06:05:48.937Z",
+      "logsPath": "data/builds/build-1782108296838-erxskr/logs.txt",
+      "downloadUrl": null,
+      "error": "Android directory not found after running expo prebuild"
+    },
+    {
+      "id": "build-1782108229706-3ccyg2",
+      "projectName": "TestApp",
+      "platform": "android",
+      "status": "failed",
+      "createdAt": "2026-06-22T06:03:49.707Z",
+      "updatedAt": "2026-06-22T06:04:05.831Z",
+      "logsPath": "data/builds/build-1782108229706-3ccyg2/logs.txt",
+      "downloadUrl": null,
+      "error": "Command failed with exit code 1"
+    }
+  ]
+}
