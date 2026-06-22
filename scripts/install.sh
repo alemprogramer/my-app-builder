@@ -180,6 +180,15 @@ pm2 start src/index.js --name "mybuild-worker"
 pm2 save
 sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp $HOME || true
 
+# Configure Firewall (Open Port 4000)
+echo "🔒 Configuring system firewall to allow port 4000..."
+if command -v ufw &> /dev/null; then
+    sudo ufw allow 4000/tcp || true
+    echo "✔ Firewall updated (port 4000 allowed)."
+else
+    echo "⚠ ufw not found. Please ensure port 4000 is open in your cloud VPS network firewall."
+fi
+
 # Get Server IP Address
 IP_ADDR=$(curl -s icanhazip.com || curl -s ifconfig.me || echo "YOUR_VPS_IP")
 

@@ -55,6 +55,11 @@ const authenticate = (req, res, next) => {
   next();
 };
 
+// Route: Health Check
+app.get('/', (req, res) => {
+  res.json({ status: 'online', service: 'mybuild-api', version: '1.0.0' });
+});
+
 // Route: Auth Login Check
 app.post('/auth/login', (req, res) => {
   const { apiKey } = req.body;
