@@ -1,0 +1,16 @@
+# Ignore local npm caches & modules
+node_modules/
+package-lock.json
+npm-debug.log
+yarn-error.log
+
+# System files
+.DS_Store
+Thumbs.db
+.git/
+.gitignore
+
+# Temp configuration & test files
+config.json
+temp_upload.zip
+*.log
