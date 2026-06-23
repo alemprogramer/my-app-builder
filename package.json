@@ -1,7 +1,7 @@
 {
   "name": "mybuilder",
   "version": "1.0.0",
-  "description": "Root workspace for mybuild - self-hosted Expo mobile app build system",
+  "description": "Root workspace for mybuild - self-hosted build system for React Native and Expo mobile apps",
   "private": true,
   "scripts": {
     "api-install": "cd api && npm install",

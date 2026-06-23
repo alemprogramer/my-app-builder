@@ -6,7 +6,7 @@
     "url": "https://github.com/alemprogramer/my-app-builder"
   },
   "homepage": "https://github.com/alemprogramer/my-app-builder",
-  "description": "CLI tool for self-hosted Expo mobile app build system",
+  "description": "CLI tool for self-hosted build system for React Native and Expo apps",
   "main": "src/index.js",
   "bin": {
     "mybuild": "./bin/mybuild.js"

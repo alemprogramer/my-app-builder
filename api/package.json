@@ -1,7 +1,7 @@
 {
   "name": "mybuild-api",
   "version": "1.0.0",
-  "description": "API Server for mybuild - self-hosted Expo build system",
+  "description": "API Server for mybuild - self-hosted build system for React Native and Expo apps",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

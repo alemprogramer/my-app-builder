@@ -13,7 +13,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const program = new Command();
 program
   .name('mybuild')
-  .description('CLI tool for self-hosted Expo mobile app builds')
+  .description('CLI tool for self-hosted React Native & Expo mobile app builds')
   .version('1.0.0');
 
 // Helper to ask user for input
@@ -195,7 +195,7 @@ program
     }
 
     // Read app/project name
-    let projectName = 'ExpoApp';
+    let projectName = 'MobileApp';
     try {
       if (fs.existsSync(appJsonPath)) {
         const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
@@ -209,7 +209,7 @@ program
         }
       }
     } catch (e) {
-      // Fallback to ExpoApp
+      // Fallback to MobileApp
     }
 
     const client = getClient();

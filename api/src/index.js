@@ -72,7 +72,7 @@ app.post('/auth/login', (req, res) => {
 // Route: Submit Build Request
 app.post('/build', authenticate, upload.single('file'), async (req, res) => {
   try {
-    const { projectName = 'ExpoApp', platform = 'android' } = req.body;
+    const { projectName = 'MobileApp', platform = 'android' } = req.body;
     if (!req.file) {
       return res.status(400).json({ error: 'No project archive (.zip) file provided.' });
     }

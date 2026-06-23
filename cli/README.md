@@ -1,8 +1,8 @@
 # mybuilder-cli
 
-Command Line Interface (CLI) for **mybuild**—a complete, self-hosted Expo mobile app build system (EAS clone) designed to compile React Native / Expo projects on your own VPS.
+Command Line Interface (CLI) for **mybuild**—a complete, self-hosted build system (similar to Expo EAS) designed to compile React Native & Expo projects on your own VPS.
 
-Using this CLI, you can upload local Expo project archives to your build server, compile release APKs/AABs asynchronously in the background, and stream logs in real-time, completely bypassing the need for local Android SDK, Java (JDK), or Gradle setup.
+Using this CLI, you can upload local React Native/Expo project archives to your build server, compile release APKs/AABs asynchronously in the background, and stream logs in real-time, completely bypassing the need for local Android SDK, Java (JDK), or Gradle setup.
 
 ---
 
@@ -118,3 +118,13 @@ scp root@YOUR_VPS_IP:/opt/mybuild/data/builds/<build-id>/*.apk ~/Downloads/
 
 ## 📄 License
 MIT
+
+---
+
+## ⚖️ Legal Disclaimer & Trademark Notice
+
+**mybuild** and **mybuilder-cli** are independent, unofficial open-source projects.
+
+- **Expo** and **EAS (Expo Application Services)** are trademarks of **650 Industries, Inc.** (referred to as Expo).
+- These projects are **not** affiliated with, sponsored by, endorsed by, or in any way officially connected to 650 Industries, Inc., Expo, or EAS.
+- Any references to "Expo", "EAS", or related terminology are used solely for descriptive purposes to indicate compatibility with apps developed using the Expo SDK.

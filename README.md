@@ -1,8 +1,8 @@
-# mybuild: Self-Hosted Expo Mobile App Build System
+# mybuild: Self-Hosted Build System for Expo & React Native Apps
 
 **English** | [বাংলা সংস্করণ (Bangla Version)](README.bn.md)
 
-A complete self-hosted mobile app build system (like Expo EAS) designed to compile Android APKs/AABs on your own Ubuntu VPS. With this setup, you don't need any local Android SDK, Java (JDK), or Gradle configuration on your local laptop.
+A complete self-hosted mobile app build system (compatible with Expo/React Native projects, similar to Expo EAS) designed to compile Android APKs/AABs on your own Ubuntu VPS. With this setup, you don't need any local Android SDK, Java (JDK), or Gradle configuration on your local laptop.
 
 ---
 
@@ -170,3 +170,13 @@ If you need to inspect or restart processes on your VPS, SSH into the server and
 
 * **Data directory path on VPS:** `/opt/mybuild/data`
 * **Raw build log file path on VPS:** `/opt/mybuild/data/builds/<build-id>/logs.txt`
+
+---
+
+## ⚖️ Legal Disclaimer & Trademark Notice
+
+**mybuild** is an independent, unofficial open-source project. 
+
+- **Expo** and **EAS (Expo Application Services)** are trademarks of **650 Industries, Inc.** (referred to as Expo).
+- This project is **not** affiliated with, sponsored by, endorsed by, or in any way officially connected to 650 Industries, Inc., Expo, or EAS.
+- Any references to "Expo", "EAS", or related terminology are used solely for descriptive purposes to indicate compatibility with apps developed using the Expo SDK.
