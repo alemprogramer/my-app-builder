@@ -24,8 +24,8 @@ const redis = new Redis(REDIS_URL);
 redis.on('error', (err) => console.error('Redis worker connection error:', err));
 redis.on('connect', () => console.log('✔ Worker connected to Redis'));
 
-// Initialize Redis for PubSub
-const subRedis = new Redis(REDIS_URL);
+// Initialize Redis for PubSub (disable ready check to avoid subscriber commands error)
+const subRedis = new Redis(REDIS_URL, { enableReadyCheck: false });
 subRedis.on('error', (err) => console.error('Redis PubSub error:', err));
 subRedis.on('connect', () => {
   console.log('✔ Worker PubSub connected');
