@@ -173,6 +173,63 @@ function zipDirectory(sourceDir, outPath) {
   });
 }
 
+// Helper: Shared build executor
+async function startBuildSession(currentDir) {
+  const appJsonPath = path.join(currentDir, 'app.json');
+  const packageJsonPath = path.join(currentDir, 'package.json');
+
+  if (!fs.existsSync(appJsonPath) && !fs.existsSync(packageJsonPath)) {
+    throw new Error('This command must be run inside a valid Expo project folder (containing app.json or package.json).');
+  }
+
+  // Read app/project name
+  let projectName = 'MobileApp';
+  try {
+    if (fs.existsSync(appJsonPath)) {
+      const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+      if (appJson.expo && appJson.expo.name) {
+        projectName = appJson.expo.name.replace(/[^a-zA-Z0-9]/g, '');
+      }
+    } else if (fs.existsSync(packageJsonPath)) {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      if (packageJson.name) {
+        projectName = packageJson.name.replace(/[^a-zA-Z0-9]/g, '');
+      }
+    }
+  } catch (e) {
+    // Fallback to MobileApp
+  }
+
+  const client = getClient();
+  const tempZipPath = path.join(CONFIG_DIR, `mybuild-temp-${Date.now()}.zip`);
+
+  try {
+    console.log('📦 Archiving local project directory (excluding node_modules/build artifacts)...');
+    await zipDirectory(currentDir, tempZipPath);
+    console.log(`✔ Archive created successfully (${(fs.statSync(tempZipPath).size / (1024 * 1024)).toFixed(2)} MB).`);
+
+    console.log('🚀 Uploading project package to build server...');
+    const form = new FormData();
+    form.append('projectName', projectName);
+    form.append('platform', 'android');
+    form.append('file', fs.createReadStream(tempZipPath));
+
+    const uploadRes = await client.post('/build', form, {
+      headers: form.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
+    });
+
+    const { buildId } = uploadRes.data;
+    return buildId;
+  } finally {
+    // Clean up local temp zip
+    if (fs.existsSync(tempZipPath)) {
+      fs.unlinkSync(tempZipPath);
+    }
+  }
+}
+
 // Command: Build Android
 program
   .command('build')
@@ -184,77 +241,25 @@ program
       return;
     }
 
-    // 1. Verify Expo project
-    const currentDir = process.cwd();
-    const appJsonPath = path.join(currentDir, 'app.json');
-    const packageJsonPath = path.join(currentDir, 'package.json');
-
-    if (!fs.existsSync(appJsonPath) && !fs.existsSync(packageJsonPath)) {
-      console.error('Error: This command must be run inside a valid Expo project folder (containing app.json or package.json).');
-      return;
-    }
-
-    // Read app/project name
-    let projectName = 'MobileApp';
     try {
-      if (fs.existsSync(appJsonPath)) {
-        const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
-        if (appJson.expo && appJson.expo.name) {
-          projectName = appJson.expo.name.replace(/[^a-zA-Z0-9]/g, '');
-        }
-      } else if (fs.existsSync(packageJsonPath)) {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-        if (packageJson.name) {
-          projectName = packageJson.name.replace(/[^a-zA-Z0-9]/g, '');
-        }
-      }
-    } catch (e) {
-      // Fallback to MobileApp
-    }
-
-    const client = getClient();
-    const tempZipPath = path.join(CONFIG_DIR, 'mybuild-temp.zip');
-
-    try {
-      console.log('📦 Archiving local project directory (excluding node_modules/build artifacts)...');
-      await zipDirectory(currentDir, tempZipPath);
-      console.log(`✔ Archive created successfully (${(fs.statSync(tempZipPath).size / (1024 * 1024)).toFixed(2)} MB).`);
-
-      // 2. Upload archive
-      console.log('🚀 Uploading project package to build server...');
-      const form = new FormData();
-      form.append('projectName', projectName);
-      form.append('platform', 'android');
-      form.append('file', fs.createReadStream(tempZipPath));
-
-      const uploadRes = await client.post('/build', form, {
-        headers: form.getHeaders(),
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      });
-
-      const { buildId } = uploadRes.data;
+      const currentDir = process.cwd();
+      const buildId = await startBuildSession(currentDir);
       console.log(`✔ Project uploaded. Assigned Build ID: ${buildId}`);
       console.log(`Streaming build logs...\n`);
 
-      // 3. Poll logs & status
+      const client = getClient();
       let printedLines = 0;
       let isFinished = false;
 
       while (!isFinished) {
-        // Wait 2.5s between updates
         await new Promise(resolve => setTimeout(resolve, 2500));
 
-        // Fetch logs
         let logs = '';
         try {
           const logRes = await client.get(`/build/${buildId}/logs`);
           logs = logRes.data;
-        } catch (err) {
-          // Ignore failures to retrieve logs during transient states
-        }
+        } catch (err) {}
 
-        // Print new logs
         const logLines = logs.split('\n');
         if (logLines.length > printedLines) {
           const newLines = logLines.slice(printedLines, logLines.length - 1);
@@ -262,7 +267,6 @@ program
           printedLines = logLines.length - 1;
         }
 
-        // Check overall status
         const statusRes = await client.get(`/build/${buildId}`);
         const buildInfo = statusRes.data;
 
@@ -287,19 +291,8 @@ program
           console.log(`========================================\n`);
         }
       }
-
     } catch (error) {
-      console.error('✖ Build initialization failed:');
-      if (error.response) {
-        console.error(`  Server error (${error.response.status}):`, error.response.data.error || error.response.statusText);
-      } else {
-        console.error(`  Error message: ${error.message}`);
-      }
-    } finally {
-      // Clean up local temp zip
-      if (fs.existsSync(tempZipPath)) {
-        fs.unlinkSync(tempZipPath);
-      }
+      console.error('✖ Build failed:', error.message);
     }
   });
 
@@ -422,7 +415,6 @@ program
       }
     }
   });
-
 // Command: Cancel Build
 program
   .command('cancel')
@@ -446,6 +438,101 @@ program
         console.error(`  Error message: ${err.message}`);
       }
     }
+  });
+
+// Command: Local Development Start
+program
+  .command('start')
+  .description('Start local Metro bundler for MyBuild Previewer app')
+  .option('-t, --tunnel', 'Launch dev server with a secure internet tunnel')
+  .option('-c, --clear', 'Clear Metro bundler cache before starting')
+  .action(async (options) => {
+    // Verify Expo project
+    const currentDir = process.cwd();
+    const appJsonPath = path.join(currentDir, 'app.json');
+    const packageJsonPath = path.join(currentDir, 'package.json');
+
+    if (!fs.existsSync(appJsonPath) && !fs.existsSync(packageJsonPath)) {
+      console.error('Error: This command must be run inside a valid Expo project folder.');
+      return;
+    }
+
+    console.log('\n========================================');
+    console.log('🚀 Starting MyBuild Local Metro Server');
+    console.log(`   Mode: ${options.tunnel ? 'TUNNEL (Internet)' : 'LAN (Wi-Fi)'}`);
+    console.log('========================================\n');
+
+    // 1. Start the HTTP helper server for mobile-triggered builds
+    const http = require('http');
+    const helperServer = http.createServer(async (req, res) => {
+      // Set CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
+      if (req.url === '/build' && req.method === 'POST') {
+        try {
+          console.log('\n[MOBILE-TRIGGER] Received build request from mobile device...');
+          const buildId = await startBuildSession(currentDir);
+          const config = loadConfig();
+
+          console.log(`[MOBILE-TRIGGER] Build successfully triggered. Build ID: ${buildId}`);
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            buildId,
+            apiUrl: config.apiUrl,
+            apiKey: config.apiKey
+          }));
+        } catch (err) {
+          console.error('[MOBILE-TRIGGER] Build trigger failed:', err.message);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: err.message
+          }));
+        }
+        return;
+      }
+
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not Found' }));
+    });
+
+    helperServer.listen(8082, () => {
+      console.log('📡 Mobile build helper server listening on port 8082');
+    });
+
+    // 2. Start Expo Metro
+    const spawnArgs = ['expo', 'start', '--dev-client', '--scheme', 'mybuild'];
+    if (options.tunnel) spawnArgs.push('--tunnel');
+    if (options.clear) spawnArgs.push('--clear');
+
+    const { spawn } = require('child_process');
+    const child = spawn('npx', spawnArgs, {
+      cwd: currentDir,
+      stdio: 'inherit',
+      shell: true
+    });
+
+    child.on('error', (err) => {
+      console.error('✖ Failed to start Metro server:', err.message);
+      helperServer.close();
+    });
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        console.log(`\nMetro server process exited with code ${code}.`);
+      }
+      helperServer.close();
+    });
   });
 
 program.parse(process.argv);
