@@ -72,7 +72,7 @@ app.post('/auth/login', (req, res) => {
 // Route: Submit Build Request
 app.post('/build', authenticate, upload.single('file'), async (req, res) => {
   try {
-    const { projectName = 'MobileApp', platform = 'android' } = req.body;
+    const { projectName = 'MobileApp', platform = 'android', buildType } = req.body;
     if (!req.file) {
       return res.status(400).json({ error: 'No project archive (.zip) file provided.' });
     }
@@ -89,7 +89,8 @@ app.post('/build', authenticate, upload.single('file'), async (req, res) => {
       id: buildId,
       projectName,
       platform,
-      status: 'queued'
+      status: 'queued',
+      buildType
     });
 
     // Create build folder for logs/output later
@@ -110,7 +111,8 @@ app.post('/build', authenticate, upload.single('file'), async (req, res) => {
       zipPath,
       platform,
       projectName,
-      logFile
+      logFile,
+      buildType
     };
 
     await redis.rpush('mybuild_queue', JSON.stringify(jobPayload));
@@ -230,7 +232,7 @@ app.get('/builds/download/:id', (req, res) => {
 // Route: Update Build Status
 app.patch('/build/:id', authenticate, (req, res) => {
   try {
-    const { status, downloadUrl, error } = req.body;
+    const { status, downloadUrl, error, buildType } = req.body;
     const build = db.getBuild(req.params.id);
     if (!build) {
       return res.status(404).json({ error: 'Build job not found.' });
@@ -240,6 +242,7 @@ app.patch('/build/:id', authenticate, (req, res) => {
     if (status) updates.status = status;
     if (downloadUrl) updates.downloadUrl = downloadUrl;
     if (error) updates.error = error;
+    if (buildType) updates.buildType = buildType;
 
     const updatedBuild = db.updateBuild(req.params.id, updates);
     res.json(updatedBuild);

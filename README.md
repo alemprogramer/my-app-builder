@@ -76,6 +76,7 @@ Your local laptop only needs Node.js installed. You do not need Android Studio o
    ```bash
    mybuild build android
    ```
+   *(You will be prompted to choose between **Release** and **Debug** build types. You can also specify it directly using the `--type` flag, e.g., `mybuild build android --type debug`)*
 
 **How it works:**
 - The CLI archives your project files into a zip payload (automatically excluding `node_modules`, `.git`, etc.).
@@ -112,9 +113,11 @@ Your local laptop only needs Node.js installed. You do not need Android Studio o
   ```
 
 ### 2. Build Commands
-* **Start Android release build (must run from Expo project root):**
+* **Start Android build (must run from Expo project root):**
   ```bash
   mybuild build android
+  # or skip prompt by passing build type directly:
+  mybuild build android --type <release|debug>
   ```
 * **Cancel active or queued build:**
   ```bash

@@ -174,7 +174,7 @@ function zipDirectory(sourceDir, outPath) {
 }
 
 // Helper: Shared build executor
-async function startBuildSession(currentDir) {
+async function startBuildSession(currentDir, buildType) {
   const appJsonPath = path.join(currentDir, 'app.json');
   const packageJsonPath = path.join(currentDir, 'package.json');
 
@@ -212,6 +212,9 @@ async function startBuildSession(currentDir) {
     const form = new FormData();
     form.append('projectName', projectName);
     form.append('platform', 'android');
+    if (buildType) {
+      form.append('buildType', buildType);
+    }
     form.append('file', fs.createReadStream(tempZipPath));
 
     const uploadRes = await client.post('/build', form, {
@@ -234,16 +237,36 @@ async function startBuildSession(currentDir) {
 program
   .command('build')
   .argument('<platform>', 'target build platform (currently only "android")')
+  .option('-t, --type <type>', 'build type: release or debug')
   .description('Build project release package on your self-hosted VPS')
-  .action(async (platform) => {
+  .action(async (platform, options) => {
     if (platform !== 'android') {
       console.error('Error: Only "android" target platform is currently supported.');
       return;
     }
 
+    let buildType = options.type;
+    if (buildType) {
+      buildType = buildType.toLowerCase();
+      if (buildType !== 'release' && buildType !== 'debug') {
+        console.error('Error: Build type must be either "release" or "debug".');
+        return;
+      }
+    } else {
+      console.log('Select build type:');
+      console.log('  1) Release (Production - ready for Google Play Store / sharing)');
+      console.log('  2) Debug (Development - for expo-dev-client / testing)');
+      const choice = await askQuestion('Enter choice (1 or 2, default: 1): ');
+      if (choice === '2') {
+        buildType = 'debug';
+      } else {
+        buildType = 'release';
+      }
+    }
+
     try {
       const currentDir = process.cwd();
-      const buildId = await startBuildSession(currentDir);
+      const buildId = await startBuildSession(currentDir, buildType);
       console.log(`✔ Project uploaded. Assigned Build ID: ${buildId}`);
       console.log(`Streaming build logs...\n`);
 
@@ -310,6 +333,7 @@ program
         console.log(`Build ID:   ${build.id}`);
         console.log(`Project:    ${build.projectName}`);
         console.log(`Platform:   ${build.platform}`);
+        if (build.buildType) console.log(`Build Type: ${build.buildType.toUpperCase()}`);
         console.log(`Status:     ${build.status.toUpperCase()}`);
         console.log(`Created:    ${new Date(build.createdAt).toLocaleString()}`);
         if (build.downloadUrl) console.log(`Artifact:   ${build.downloadUrl}`);
@@ -321,12 +345,13 @@ program
           console.log('No builds found on this server.');
           return;
         }
-        console.log(String('ID').padEnd(30) + String('PROJECT').padEnd(20) + String('STATUS').padEnd(12) + String('CREATED'));
-        console.log(''.padEnd(80, '-'));
+        console.log(String('ID').padEnd(30) + String('PROJECT').padEnd(20) + String('TYPE').padEnd(10) + String('STATUS').padEnd(12) + String('CREATED'));
+        console.log(''.padEnd(90, '-'));
         builds.slice(0, 10).forEach(b => {
           console.log(
             String(b.id).padEnd(30) + 
             String(b.projectName).padEnd(20) + 
+            String(b.buildType || 'N/A').padEnd(10) + 
             String(b.status.toUpperCase()).padEnd(12) + 
             new Date(b.createdAt).toLocaleString()
           );

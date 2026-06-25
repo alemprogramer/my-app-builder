@@ -182,23 +182,48 @@ async function processQueue() {
       logStream.write(`[SYSTEM] Giving execute permissions to gradlew...\n`);
       await runCommand('chmod', ['+x', 'gradlew'], androidDir, logStream);
 
-      logStream.write(`[SYSTEM] Running gradle assembleRelease...\n`);
-      await runCommand('./gradlew', ['assembleRelease'], androidDir, logStream);
+      // Check build type (explicitly passed or dynamically detected)
+      let buildType = jobData.buildType;
+
+      if (!buildType) {
+        buildType = 'release';
+        try {
+          const packageJsonPath = path.join(buildTempDir, 'package.json');
+          if (fs.existsSync(packageJsonPath)) {
+            const pkgJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+            if (pkgJson.dependencies && pkgJson.dependencies['expo-dev-client']) {
+              buildType = 'debug';
+            }
+          }
+        } catch (e) {
+          logStream.write(`[SYSTEM] Warning: Failed to parse package.json for build type detection: ${e.message}\n`);
+        }
+      }
+
+      // Update API database with the selected/detected build type
+      await updateStatus(id, 'building', { buildType });
+
+      const gradleTask = buildType === 'debug' ? 'assembleDebug' : 'assembleRelease';
+      const apkSubDir = buildType === 'debug' ? 'debug' : 'release';
+      const builtApkName = buildType === 'debug' ? 'app-debug.apk' : 'app-release.apk';
+
+      logStream.write(`[SYSTEM] Running gradle ${gradleTask} (Build Type: ${buildType})...\n`);
+      await runCommand('./gradlew', [gradleTask], androidDir, logStream);
 
       // Find output APK
-      const apkOutDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', 'release');
-      const apkPath = path.join(apkOutDir, 'app-release.apk');
+      const apkOutDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', apkSubDir);
+      const apkPath = path.join(apkOutDir, builtApkName);
 
       if (!fs.existsSync(apkPath)) {
-        throw new Error('APK not found in expected output directory: ' + apkPath);
+        throw new Error(`APK not found in expected output directory: ${apkPath}`);
       }
 
       // 6. Copy output back to shared public folder
       const finalBuildFolder = path.dirname(logFile); // Same as logsPath folder
-      const finalApkPath = path.join(finalBuildFolder, `${projectName}-release.apk`);
+      const finalApkPath = path.join(finalBuildFolder, `${projectName}-${buildType}.apk`);
       fs.copyFileSync(apkPath, finalApkPath);
 
-      logStream.write(`[SYSTEM] Build succeeded! Saving artifact.\n`);
+      logStream.write(`[SYSTEM] Build succeeded! Saving artifact: ${projectName}-${buildType}.apk\n`);
       console.log(`Build ${id} succeeded!`);
 
       // 7. Update status to completed

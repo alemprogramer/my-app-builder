@@ -61,6 +61,7 @@ mybuild login [key]
    ```bash
    mybuild build android
    ```
+   *(You can select either **Release** or **Debug** from the interactive menu, or specify the build type directly using the `--type` flag, e.g., `mybuild build android --type debug`)*
 
 **What happens next?**
 - The CLI archives your directory (automatically filtering out `node_modules`, `.git`, `.expo`, `android`, `ios`, and other heavy build directories).
@@ -77,6 +78,8 @@ mybuild login [key]
 * **Trigger Android Build:**
   ```bash
   mybuild build android
+  # or bypass the interactive menu:
+  mybuild build android --type <release|debug>
   ```
 * **Cancel Active or Queued Build:**
   ```bash

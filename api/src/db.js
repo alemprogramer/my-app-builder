@@ -47,13 +47,14 @@ const db = {
     return builds.find(b => b.id === id) || null;
   },
 
-  createBuild({ id, projectName, platform, status = 'queued' }) {
+  createBuild({ id, projectName, platform, status = 'queued', buildType = null }) {
     const data = read();
     const newBuild = {
       id,
       projectName,
       platform,
       status,
+      buildType,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       logsPath: null,
