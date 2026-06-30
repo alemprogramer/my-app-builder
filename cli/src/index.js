@@ -33,15 +33,18 @@ function askQuestion(query) {
 async function chooseBuildType() {
   const question = 'Select build type:';
   const options = [
-    'Release (Production - ready for Google Play Store / sharing)',
-    'Debug (Development - for expo-dev-client / testing)'
+    'Release APK (Production - for direct installation / sharing)',
+    'Release AAB (Production - for Google Play Store upload)',
+    'Debug APK (Development - for expo-dev-client / testing)'
   ];
 
   if (!process.stdin.isTTY) {
     console.log(question);
     options.forEach((opt, idx) => console.log(`  ${idx + 1}) ${opt}`));
-    const choice = await askQuestion('Enter choice (1 or 2, default: 1): ');
-    return choice === '2' ? 'debug' : 'release';
+    const choice = await askQuestion('Enter choice (1, 2 or 3, default: 1): ');
+    if (choice === '2') return 'aab';
+    if (choice === '3') return 'debug';
+    return 'release';
   }
 
   return new Promise((resolve) => {
@@ -96,7 +99,13 @@ async function chooseBuildType() {
         
         console.log(`✔ Selected: \u001b[36m${options[cursor]}\u001b[39m\n`);
         
-        resolve(cursor === 1 ? 'debug' : 'release');
+        let result = 'release';
+        if (cursor === 1) {
+          result = 'aab';
+        } else if (cursor === 2) {
+          result = 'debug';
+        }
+        resolve(result);
       }
     };
     
@@ -327,7 +336,7 @@ async function startBuildSession(currentDir, buildType) {
 program
   .command('build')
   .argument('<platform>', 'target build platform (currently only "android")')
-  .option('-t, --type <type>', 'build type: release or debug')
+  .option('-t, --type <type>', 'build type: release, debug or aab')
   .description('Build project release package on your self-hosted VPS')
   .action(async (platform, options) => {
     if (platform !== 'android') {
@@ -338,8 +347,8 @@ program
     let buildType = options.type;
     if (buildType) {
       buildType = buildType.toLowerCase();
-      if (buildType !== 'release' && buildType !== 'debug') {
-        console.error('Error: Build type must be either "release" or "debug".');
+      if (buildType !== 'release' && buildType !== 'debug' && buildType !== 'aab') {
+        console.error('Error: Build type must be "release", "debug", or "aab".');
         return;
       }
     } else {
@@ -380,9 +389,12 @@ program
           console.log(`\n========================================`);
           console.log(`✔ BUILD SUCCESSFUL`);
           console.log(`========================================`);
-          console.log(`Download APK: ${buildInfo.downloadUrl}`);
-          console.log(`\nScan the QR code below to download direct to your device:`);
-          await printQRCode(buildInfo.downloadUrl);
+          const isAab = buildInfo.buildType === 'aab' || buildInfo.downloadUrl.endsWith('.aab');
+          console.log(`Download ${isAab ? 'AAB' : 'APK'}: ${buildInfo.downloadUrl}`);
+          if (!isAab) {
+            console.log(`\nScan the QR code below to download direct to your device:`);
+            await printQRCode(buildInfo.downloadUrl);
+          }
           console.log(`========================================\n`);
         } else if (buildInfo.status === 'failed') {
           isFinished = true;
@@ -500,9 +512,12 @@ program
           console.log(`\n========================================`);
           console.log(`✔ BUILD SUCCESSFUL`);
           console.log(`========================================`);
-          console.log(`Download APK: ${buildInfo.downloadUrl}`);
-          console.log(`\nScan the QR code below to download direct to your device:`);
-          await printQRCode(buildInfo.downloadUrl);
+          const isAab = buildInfo.buildType === 'aab' || buildInfo.downloadUrl.endsWith('.aab');
+          console.log(`Download ${isAab ? 'AAB' : 'APK'}: ${buildInfo.downloadUrl}`);
+          if (!isAab) {
+            console.log(`\nScan the QR code below to download direct to your device:`);
+            await printQRCode(buildInfo.downloadUrl);
+          }
           console.log(`========================================\n`);
         } else if (buildInfo.status === 'failed') {
           isFinished = true;

@@ -61,14 +61,14 @@ mybuild login [key]
    ```bash
    mybuild build android
    ```
-   *(You can select either **Release** or **Debug** from the interactive menu, or specify the build type directly using the `--type` flag, e.g., `mybuild build android --type debug`)*
+   *(You can select either **Release APK**, **Release AAB**, or **Debug APK** from the interactive menu, or specify the build type directly using the `--type` flag, e.g., `mybuild build android --type aab`)*
 
 **What happens next?**
 - The CLI archives your directory (automatically filtering out `node_modules`, `.git`, `.expo`, `android`, `ios`, and other heavy build directories).
 - The zip payload is uploaded to your VPS API Server.
 - The build task is enqueued to Redis and compiled sequentially.
-- **Real-time logs** from `npm install`, `npx expo prebuild`, and `./gradlew assembleRelease` are streamed directly to your terminal.
-- Once completed, a dynamic public download link for the release APK is returned!
+- **Real-time logs** from `npm install`, `npx expo prebuild`, and `./gradlew` (running `assembleRelease`, `bundleRelease`, or `assembleDebug` based on type) are streamed directly to your terminal.
+- Once completed, a dynamic public download link for the build artifact is returned!
 
 ---
 
@@ -79,7 +79,7 @@ mybuild login [key]
   ```bash
   mybuild build android
   # or bypass the interactive menu:
-  mybuild build android --type <release|debug>
+  mybuild build android --type <release|debug|aab>
   ```
 * **Cancel Active or Queued Build:**
   ```bash
@@ -111,10 +111,10 @@ mybuild login [key]
 ---
 
 ## ⚡ Direct SSH/SCP Download (Workaround)
-If downloading through the browser gets throttled or fails due to network instability on port 4000, run this command in your **local terminal** (not on the VPS) to download the APK directly over port 22 (SSH) into your `Downloads` folder:
+If downloading through the browser gets throttled or fails due to network instability on port 4000, run this command in your **local terminal** (not on the VPS) to download the artifact directly over port 22 (SSH) into your `Downloads` folder:
 
 ```bash
-scp root@YOUR_VPS_IP:/opt/mybuild/data/builds/<build-id>/*.apk ~/Downloads/
+scp root@YOUR_VPS_IP:/opt/mybuild/data/builds/<build-id>/* ~/Downloads/
 ```
 
 ---

@@ -203,27 +203,46 @@ async function processQueue() {
       // Update API database with the selected/detected build type
       await updateStatus(id, 'building', { buildType });
 
-      const gradleTask = buildType === 'debug' ? 'assembleDebug' : 'assembleRelease';
-      const apkSubDir = buildType === 'debug' ? 'debug' : 'release';
-      const builtApkName = buildType === 'debug' ? 'app-debug.apk' : 'app-release.apk';
+      let gradleTask;
+      let buildSubDir;
+      let outputFileName;
+      let fileExtension;
+
+      if (buildType === 'debug') {
+        gradleTask = 'assembleDebug';
+        buildSubDir = path.join('apk', 'debug');
+        outputFileName = 'app-debug.apk';
+        fileExtension = 'apk';
+      } else if (buildType === 'aab') {
+        gradleTask = 'bundleRelease';
+        buildSubDir = path.join('bundle', 'release');
+        outputFileName = 'app-release.aab';
+        fileExtension = 'aab';
+      } else {
+        // default release APK
+        gradleTask = 'assembleRelease';
+        buildSubDir = path.join('apk', 'release');
+        outputFileName = 'app-release.apk';
+        fileExtension = 'apk';
+      }
 
       logStream.write(`[SYSTEM] Running gradle ${gradleTask} (Build Type: ${buildType})...\n`);
       await runCommand('./gradlew', [gradleTask], androidDir, logStream);
 
-      // Find output APK
-      const apkOutDir = path.join(androidDir, 'app', 'build', 'outputs', 'apk', apkSubDir);
-      const apkPath = path.join(apkOutDir, builtApkName);
+      // Find output artifact
+      const outputDir = path.join(androidDir, 'app', 'build', 'outputs', buildSubDir);
+      const artifactPath = path.join(outputDir, outputFileName);
 
-      if (!fs.existsSync(apkPath)) {
-        throw new Error(`APK not found in expected output directory: ${apkPath}`);
+      if (!fs.existsSync(artifactPath)) {
+        throw new Error(`Build artifact not found in expected output directory: ${artifactPath}`);
       }
 
       // 6. Copy output back to shared public folder
       const finalBuildFolder = path.dirname(logFile); // Same as logsPath folder
-      const finalApkPath = path.join(finalBuildFolder, `${projectName}-${buildType}.apk`);
-      fs.copyFileSync(apkPath, finalApkPath);
+      const finalArtifactPath = path.join(finalBuildFolder, `${projectName}-${buildType}.${fileExtension}`);
+      fs.copyFileSync(artifactPath, finalArtifactPath);
 
-      logStream.write(`[SYSTEM] Build succeeded! Saving artifact: ${projectName}-${buildType}.apk\n`);
+      logStream.write(`[SYSTEM] Build succeeded! Saving artifact: ${projectName}-${buildType}.${fileExtension}\n`);
       console.log(`Build ${id} succeeded!`);
 
       // 7. Update status to completed

@@ -69,22 +69,22 @@ Your local laptop only needs Node.js installed. You do not need Android Studio o
 
 ---
 
-### Step 4: Build your App (Build Android APK)
+### Step 4: Build your App (Build Android APK/AAB)
 
 1. Navigate to the root directory of any Expo project on your laptop (the folder containing `app.json` or `package.json`).
 2. Run the build command:
    ```bash
    mybuild build android
    ```
-   *(You will be prompted to choose between **Release** and **Debug** build types. You can also specify it directly using the `--type` flag, e.g., `mybuild build android --type debug`)*
+   *(You will be prompted to choose between **Release APK**, **Release AAB**, and **Debug APK** build types. You can also specify it directly using the `--type` flag, e.g., `mybuild build android --type aab`)*
 
 **How it works:**
 - The CLI archives your project files into a zip payload (automatically excluding `node_modules`, `.git`, etc.).
 - The zip file is uploaded to the VPS API Server.
 - The server queues the job to Redis.
-- The background build worker extracts the project, runs `npm install` (or yarn/bun), executes `npx expo prebuild`, and runs `./gradlew assembleRelease` to compile.
+- The background build worker extracts the project, runs `npm install` (or yarn/bun), executes `npx expo prebuild`, and runs gradle commands (`assembleRelease` for APK, `bundleRelease` for AAB, or `assembleDebug` for debug APK).
 - Real-time build logs are streamed directly to your laptop's terminal.
-- Once compilation completes, you'll receive a direct download link for the release APK.
+- Once compilation completes, you'll receive a direct download link for the build artifact.
 
 * **Cancel a Build (Cancel Build):**
    To cancel an active build or remove a build from the queue, run:
@@ -117,7 +117,7 @@ Your local laptop only needs Node.js installed. You do not need Android Studio o
   ```bash
   mybuild build android
   # or skip prompt by passing build type directly:
-  mybuild build android --type <release|debug>
+  mybuild build android --type <release|debug|aab>
   ```
 * **Cancel active or queued build:**
   ```bash
@@ -145,9 +145,9 @@ Your local laptop only needs Node.js installed. You do not need Android Studio o
   ```
 
 ### 5. 🚀 Direct SSH/SCP Download (Fast Alternative)
-If you have slow download speeds or the download fails on port 4000 due to network constraints, run this command in your **local terminal** (not on the VPS) to download the APK directly over port 22 (SSH) to your **Downloads** folder:
+If you have slow download speeds or the download fails on port 4000 due to network constraints, run this command in your **local terminal** (not on the VPS) to download the artifact directly over port 22 (SSH) to your **Downloads** folder:
 ```bash
-scp root@YOUR_VPS_IP:/opt/mybuild/data/builds/<build-id>/*.apk ~/Downloads/
+scp root@YOUR_VPS_IP:/opt/mybuild/data/builds/<build-id>/* ~/Downloads/
 ```
 
 ---
