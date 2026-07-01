@@ -381,8 +381,14 @@ program
           printedLines = logLines.length - 1;
         }
 
-        const statusRes = await client.get(`/build/${buildId}`);
-        const buildInfo = statusRes.data;
+        let buildInfo;
+        try {
+          const statusRes = await client.get(`/build/${buildId}`);
+          buildInfo = statusRes.data;
+        } catch (err) {
+          // Ignore transient API server errors/hang-ups under heavy load and retry
+          continue;
+        }
 
         if (buildInfo.status === 'completed') {
           isFinished = true;
