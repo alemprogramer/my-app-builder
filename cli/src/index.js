@@ -364,6 +364,7 @@ program
       const client = getClient();
       let printedLines = 0;
       let isFinished = false;
+      let hasProgressBarDrawn = false;
 
       while (!isFinished) {
         await new Promise(resolve => setTimeout(resolve, 2500));
@@ -375,6 +376,12 @@ program
         } catch (err) {}
 
         const logLines = logs.split('\n');
+        
+        if (hasProgressBarDrawn) {
+          process.stdout.write('\r\u001B[K');
+          hasProgressBarDrawn = false;
+        }
+
         if (logLines.length > printedLines) {
           const newLines = logLines.slice(printedLines, logLines.length - 1);
           newLines.forEach(line => console.log(line));
@@ -392,6 +399,9 @@ program
 
         if (buildInfo.status === 'completed') {
           isFinished = true;
+          if (hasProgressBarDrawn) {
+            process.stdout.write('\r\u001B[K');
+          }
           console.log(`\n========================================`);
           console.log(`✔ BUILD SUCCESSFUL`);
           console.log(`========================================`);
@@ -404,6 +414,9 @@ program
           console.log(`========================================\n`);
         } else if (buildInfo.status === 'failed') {
           isFinished = true;
+          if (hasProgressBarDrawn) {
+            process.stdout.write('\r\u001B[K');
+          }
           console.log(`\n========================================`);
           console.log(`✖ BUILD FAILED`);
           console.log(`========================================`);
@@ -411,9 +424,30 @@ program
           console.log(`========================================\n`);
         } else if (buildInfo.status === 'cancelled') {
           isFinished = true;
+          if (hasProgressBarDrawn) {
+            process.stdout.write('\r\u001B[K');
+          }
           console.log(`\n========================================`);
           console.log(`⚠ BUILD CANCELLED BY USER`);
           console.log(`========================================\n`);
+        } else {
+          // Draw CLI progress bar
+          if (buildInfo.progress !== undefined) {
+            const percent = buildInfo.progress;
+            const barWidth = 30;
+            const filledWidth = Math.round((percent / 100) * barWidth);
+            const emptyWidth = barWidth - filledWidth;
+            const bar = '='.repeat(filledWidth) + (filledWidth < barWidth ? '>' : '') + ' '.repeat(Math.max(0, emptyWidth - 1));
+            const progressText = buildInfo.progressText || '';
+            
+            let resourcesStr = '';
+            if (buildInfo.cpu !== undefined && buildInfo.ram !== undefined) {
+              resourcesStr = ` \u001b[90m|\u001b[39m \u001b[35mCPU: ${buildInfo.cpu}%\u001b[39m \u001b[90m|\u001b[39m \u001b[32mRAM: ${buildInfo.ram}\u001b[39m`;
+            }
+            
+            process.stdout.write(`\r\u001b[36m[${bar}] ${percent}% - ${progressText}\u001b[39m${resourcesStr}`);
+            hasProgressBarDrawn = true;
+          }
         }
       }
     } catch (error) {
@@ -489,6 +523,7 @@ program
     console.log(`Streaming live build logs for ${id} (Ctrl+C to stop)...\n`);
     let printedLines = 0;
     let isFinished = false;
+    let hasProgressBarDrawn = false;
 
     while (!isFinished) {
       // Fetch logs
@@ -502,6 +537,12 @@ program
 
       // Print new logs
       const logLines = logs.split('\n');
+      
+      if (hasProgressBarDrawn) {
+        process.stdout.write('\r\u001B[K');
+        hasProgressBarDrawn = false;
+      }
+
       if (logLines.length > printedLines) {
         const newLines = logLines.slice(printedLines, logLines.length - 1);
         newLines.forEach(line => console.log(line));
@@ -515,6 +556,9 @@ program
 
         if (buildInfo.status === 'completed') {
           isFinished = true;
+          if (hasProgressBarDrawn) {
+            process.stdout.write('\r\u001B[K');
+          }
           console.log(`\n========================================`);
           console.log(`✔ BUILD SUCCESSFUL`);
           console.log(`========================================`);
@@ -527,6 +571,9 @@ program
           console.log(`========================================\n`);
         } else if (buildInfo.status === 'failed') {
           isFinished = true;
+          if (hasProgressBarDrawn) {
+            process.stdout.write('\r\u001B[K');
+          }
           console.log(`\n========================================`);
           console.log(`✖ BUILD FAILED`);
           console.log(`========================================`);
@@ -534,9 +581,30 @@ program
           console.log(`========================================\n`);
         } else if (buildInfo.status === 'cancelled') {
           isFinished = true;
+          if (hasProgressBarDrawn) {
+            process.stdout.write('\r\u001B[K');
+          }
           console.log(`\n========================================`);
           console.log(`⚠ BUILD CANCELLED BY USER`);
           console.log(`========================================\n`);
+        } else {
+          // Draw CLI progress bar
+          if (buildInfo.progress !== undefined) {
+            const percent = buildInfo.progress;
+            const barWidth = 30;
+            const filledWidth = Math.round((percent / 100) * barWidth);
+            const emptyWidth = barWidth - filledWidth;
+            const bar = '='.repeat(filledWidth) + (filledWidth < barWidth ? '>' : '') + ' '.repeat(Math.max(0, emptyWidth - 1));
+            const progressText = buildInfo.progressText || '';
+            
+            let resourcesStr = '';
+            if (buildInfo.cpu !== undefined && buildInfo.ram !== undefined) {
+              resourcesStr = ` \u001b[90m|\u001b[39m \u001b[35mCPU: ${buildInfo.cpu}%\u001b[39m \u001b[90m|\u001b[39m \u001b[32mRAM: ${buildInfo.ram}\u001b[39m`;
+            }
+            
+            process.stdout.write(`\r\u001b[36m[${bar}] ${percent}% - ${progressText}\u001b[39m${resourcesStr}`);
+            hasProgressBarDrawn = true;
+          }
         }
       } catch (err) {
         // Ignore status failures

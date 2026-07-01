@@ -243,6 +243,10 @@ app.patch('/build/:id', authenticate, (req, res) => {
     if (downloadUrl) updates.downloadUrl = downloadUrl;
     if (error) updates.error = error;
     if (buildType) updates.buildType = buildType;
+    if (req.body.progress !== undefined) updates.progress = req.body.progress;
+    if (req.body.progressText !== undefined) updates.progressText = req.body.progressText;
+    if (req.body.cpu !== undefined) updates.cpu = req.body.cpu;
+    if (req.body.ram !== undefined) updates.ram = req.body.ram;
 
     const updatedBuild = db.updateBuild(req.params.id, updates);
     res.json(updatedBuild);

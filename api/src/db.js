@@ -55,6 +55,8 @@ const db = {
       platform,
       status,
       buildType,
+      progress: 0,
+      progressText: 'Queued',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       logsPath: null,

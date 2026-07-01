@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const AdmZip = require('adm-zip');
+const readline = require('readline');
+const os = require('os');
 
 const API_URL = process.env.API_URL || 'http://127.0.0.1:3000';
 const API_KEY = process.env.API_KEY || 'default-secret-key';
@@ -47,7 +49,7 @@ subRedis.on('message', (channel, message) => {
 });
 
 // Helper to run commands and pipe output to log file
-function runCommand(cmd, args, cwd, writeStream) {
+function runCommand(cmd, args, cwd, writeStream, onLine) {
   return new Promise((resolve, reject) => {
     writeStream.write(`\n[SYSTEM] Executing: ${cmd} ${args.join(' ')}\n`);
     console.log(`[SYSTEM] Executing in ${cwd}: ${cmd} ${args.join(' ')}`);
@@ -69,12 +71,22 @@ function runCommand(cmd, args, cwd, writeStream) {
 
     activeChildProcess = child;
 
-    child.stdout.on('data', (data) => {
-      writeStream.write(data);
+    const rl = readline.createInterface({
+      input: child.stdout,
+      terminal: false
+    });
+    rl.on('line', (line) => {
+      writeStream.write(line + '\n');
+      if (onLine) onLine(line);
     });
 
-    child.stderr.on('data', (data) => {
-      writeStream.write(data);
+    const rlErr = readline.createInterface({
+      input: child.stderr,
+      terminal: false
+    });
+    rlErr.on('line', (line) => {
+      writeStream.write(line + '\n');
+      if (onLine) onLine(line);
     });
 
     child.on('close', (code) => {
@@ -95,11 +107,54 @@ function runCommand(cmd, args, cwd, writeStream) {
   });
 }
 
+// Global resource usage metrics
+let currentCpuUsage = 0;
+let currentRamUsage = '0.0GB/0.0GB (0%)';
+
+function cpuAverage() {
+  const cpus = os.cpus();
+  if (!cpus || cpus.length === 0) return { idle: 0, total: 0 };
+  let idleMs = 0;
+  let totalMs = 0;
+  for (let i = 0; i < cpus.length; i++) {
+    const cpu = cpus[i];
+    for (const type in cpu.times) {
+      totalMs += cpu.times[type];
+    }
+    idleMs += cpu.times.idle;
+  }
+  return { idle: idleMs / cpus.length, total: totalMs / cpus.length };
+}
+
+function getCpuUsageDelta(start, end) {
+  const idleDifference = end.idle - start.idle;
+  const totalDifference = end.total - start.total;
+  if (totalDifference === 0) return 0;
+  return 100 - Math.round((100 * idleDifference) / totalDifference);
+}
+
+let lastCpuMeasure = cpuAverage();
+setInterval(() => {
+  const currentMeasure = cpuAverage();
+  currentCpuUsage = getCpuUsageDelta(lastCpuMeasure, currentMeasure);
+  lastCpuMeasure = currentMeasure;
+
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const usedPercent = Math.round((usedMem / totalMem) * 100);
+  const usedGB = (usedMem / (1024 * 1024 * 1024)).toFixed(1);
+  const totalGB = (totalMem / (1024 * 1024 * 1024)).toFixed(1);
+  currentRamUsage = `${usedGB}GB/${totalGB}GB (${usedPercent}%)`;
+}, 2000);
+
 // Update status to API
 async function updateStatus(buildId, status, extra = {}) {
   try {
     await axios.patch(`${API_URL}/build/${buildId}`, {
       status,
+      cpu: currentCpuUsage,
+      ram: currentRamUsage,
       ...extra
     }, {
       headers: {
@@ -139,19 +194,22 @@ async function processQueue() {
 
     try {
       // 1. Set status to building
-      await updateStatus(id, 'building');
+      await updateStatus(id, 'building', { progress: 5, progressText: 'Starting build worker task' });
 
       logStream = fs.createWriteStream(logFile, { flags: 'a' });
       logStream.write(`[SYSTEM] Starting build worker task for project: ${projectName}\n`);
 
       // 2. Extract zip file
+      await updateStatus(id, 'building', { progress: 10, progressText: 'Extracting project archive' });
       logStream.write(`[SYSTEM] Extracting project archive...\n`);
       fs.mkdirSync(buildTempDir, { recursive: true });
       const zip = new AdmZip(zipPath);
       zip.extractAllTo(buildTempDir, true);
       logStream.write(`[SYSTEM] Extraction completed.\n`);
+      await updateStatus(id, 'building', { progress: 15, progressText: 'Extraction completed' });
 
       // 3. Install dependencies
+      await updateStatus(id, 'building', { progress: 20, progressText: 'Installing dependencies' });
       logStream.write(`[SYSTEM] Installing dependencies...\n`);
       const hasYarn = fs.existsSync(path.join(buildTempDir, 'yarn.lock'));
       const hasBun = fs.existsSync(path.join(buildTempDir, 'bun.lockb'));
@@ -167,10 +225,13 @@ async function processQueue() {
       }
 
       await runCommand(installCmd, installArgs, buildTempDir, logStream);
+      await updateStatus(id, 'building', { progress: 35, progressText: 'Dependencies installed' });
 
       // 4. Run Expo prebuild
+      await updateStatus(id, 'building', { progress: 40, progressText: 'Running Expo prebuild' });
       logStream.write(`[SYSTEM] Running npx expo prebuild...\n`);
       await runCommand('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], buildTempDir, logStream);
+      await updateStatus(id, 'building', { progress: 50, progressText: 'Expo prebuild completed' });
 
       // 5. Build Android Release (APK/AAB)
       const androidDir = path.join(buildTempDir, 'android');
@@ -201,7 +262,7 @@ async function processQueue() {
       }
 
       // Update API database with the selected/detected build type
-      await updateStatus(id, 'building', { buildType });
+      await updateStatus(id, 'building', { buildType, progress: 55, progressText: 'Configuring Gradle project' });
 
       let gradleTask;
       let buildSubDir;
@@ -227,7 +288,31 @@ async function processQueue() {
       }
 
       logStream.write(`[SYSTEM] Running gradle ${gradleTask} (Build Type: ${buildType})...\n`);
-      await runCommand('./gradlew', [gradleTask], androidDir, logStream);
+      
+      const totalEstimatedTasks = buildType === 'debug' ? 600 : 350;
+      let currentTaskCount = 0;
+      let lastUpdateTime = 0;
+
+      await runCommand('./gradlew', [gradleTask], androidDir, logStream, (line) => {
+        if (line.startsWith('> Task :')) {
+          currentTaskCount++;
+          
+          const match = line.match(/^>\s*Task\s*(:\S+)/);
+          const taskName = match ? match[1] : '';
+          
+          const gradleProgress = Math.min(95, 55 + Math.round((currentTaskCount / totalEstimatedTasks) * 40));
+          
+          const now = Date.now();
+          if (now - lastUpdateTime > 2000 || gradleProgress === 95) {
+            lastUpdateTime = now;
+            updateStatus(id, 'building', {
+              buildType,
+              progress: gradleProgress,
+              progressText: `Compiling: ${taskName}`
+            });
+          }
+        }
+      });
 
       // Find output artifact
       const outputDir = path.join(androidDir, 'app', 'build', 'outputs', buildSubDir);
@@ -247,6 +332,8 @@ async function processQueue() {
 
       // 7. Update status to completed
       await updateStatus(id, 'completed', {
+        progress: 100,
+        progressText: 'Build completed successfully!',
         downloadUrl: `${API_URL}/builds/download/${id}`
       });
 
@@ -273,9 +360,14 @@ async function processQueue() {
         if (logStream) {
           logStream.write(`[SYSTEM] Build aborted by user cancellation.\n`);
         }
-        await updateStatus(id, 'cancelled');
+        await updateStatus(id, 'cancelled', {
+          progress: 0,
+          progressText: 'Build cancelled by user'
+        });
       } else {
         await updateStatus(id, 'failed', {
+          progress: 0,
+          progressText: 'Build failed',
           error: error.message
         });
       }
